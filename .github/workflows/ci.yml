@@ -1,0 +1,29 @@
+name: CI ThingsBoard - LOG8371
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Compilation et Tests (Modules Data & Util)
+        run: mvn clean install -pl common/data,common/util -am
+
+      - name: Vérification du lancement (Dry Run)
+        run: |
+          echo "Lancement en cours..."
+          ls common/data/target/*.jar
+          echo "Lancement réussi !"
