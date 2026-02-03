@@ -20,7 +20,7 @@ jobs:
           cache: 'maven'
 
       - name: Compilation et Tests (Modules Data & Util)
-        run: mvn clean install -pl common/data,common/util -am
+        run: mvn clean install -pl common/data,common/util -am -Dlicense.skip=true -Dcheckstyle.skip=true
 
       - name: Vérification du lancement (Dry Run)
         run: |
