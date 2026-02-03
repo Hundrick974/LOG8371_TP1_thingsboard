@@ -20,15 +20,11 @@ jobs:
       - name: Compilation et Tests
         run: mvn clean install -pl common/data,common/util -am -Dlicense.skip=true -Dcheckstyle.skip=true -Dformatter.skip=true -Dimpsort.skip=true
 
-      - name: Lancement de ThingsBoard (Simple Run)
+      - name: Lancer ThingsBoard
         run: |
-          echo "Démarrage de l'application..."
-          # On vérifie que le binaire est là et on simule l'initialisation
-          if ls common/data/target/*.jar 1> /dev/null 2>&1; then
-            echo "Artefact trouvé : $(ls common/data/target/*.jar)"
-            echo "Initialisation du service..."
-            echo "ThingsBoard started successfully on port 8080."
-          else
-            echo "Erreur : binaire introuvable."
-            exit 1
-          fi
+          docker run -d --name tb -p 8080:8080 thingsboard/tb-postgres
+          sleep 30
+          docker logs tb | tail -n 20
+          docker ps | grep tb
+          docker stop tb
+          docker rm tb
