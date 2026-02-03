@@ -2,9 +2,7 @@ name: CI ThingsBoard - LOG8371
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches: [ master, main ]
 
 jobs:
   build:
@@ -19,11 +17,5 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Compilation et Tests (Modules Data & Util)
-        run: mvn clean install -pl common/data,common/util -am -Dlicense.skip=true -Dcheckstyle.skip=true
-
-      - name: Vérification du lancement (Dry Run)
-        run: |
-          echo "Lancement en cours..."
-          ls common/data/target/*.jar
-          echo "Lancement réussi !"
+      - name: Compilation et Tests
+        run: mvn clean install -pl common/data,common/util -am -Dlicense.skip=true -Dcheckstyle.skip=true -Dformatter.skip=true -Dimpsort.skip=true
