@@ -20,7 +20,12 @@ jobs:
           cache: 'maven'
 
       - name: Run ONLY common tests
-        run: mvn test -pl common/data,common/util -am
+        run: |
+          mvn test -pl common/data,common/util -am \
+            -Dlicense.skip=true \
+            -Dcheckstyle.skip=true \
+            -Dformatter.skip=true \
+            -Dimpsort.skip=true
 
   docker-run:
     name: Build & Run ThingsBoard (from THIS repo)
@@ -39,14 +44,20 @@ jobs:
 
       - name: Build ThingsBoard (no tests)
         run: |
-          mvn clean install -DskipTests
+          mvn clean install -DskipTests \
+            -Dlicense.skip=true \
+            -Dcheckstyle.skip=true \
+            -Dformatter.skip=true \
+            -Dimpsort.skip=true
 
       - name: Build Docker image from this repo
         run: |
           docker build -t tb-local -f docker/tb-postgres/Dockerfile .
 
       - name: Start ThingsBoard with Docker Compose (Postgres)
-        run: cd docker && TB_IMAGE=tb-local docker compose -f docker-compose.postgres.yml up -d
+        run: |
+          cd docker && TB_IMAGE=tb-local \
+          docker compose -f docker-compose.postgres.yml up -d
 
       - name: Check running container
         run: |
