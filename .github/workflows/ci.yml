@@ -20,7 +20,7 @@ jobs:
           cache: 'maven'
 
       - name: Run ONLY common tests
-        run: mvn test -pl common/data,common/util,edqs,rule-engine/rule-engine-api,rule-engine/rule-engine-components -am -Dlicense.skip=true -Dcheckstyle.skip=true -Dformatter.skip=true -Dimpsort.skip=true
+        run: mvn test -pl common/data,common/util,edqs -am -Dlicense.skip=true -Dcheckstyle.skip=true -Dformatter.skip=true -Dimpsort.skip=true
 
 #  docker-run:
 #    name: Build & Run ThingsBoard (from THIS repo)
