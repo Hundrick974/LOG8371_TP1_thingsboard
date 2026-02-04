@@ -52,14 +52,18 @@ jobs:
 
       - name: Build Docker image from this repo
         run: |
-          docker build -t tb-local -f docker/tb-postgres/Dockerfile .
+          # Build ton image ThingsBoard à partir du code
+          docker build -t tb-local -f docker/Dockerfile .
 
       - name: Start ThingsBoard with Docker Compose (Postgres)
         run: |
-          cd docker && TB_IMAGE=tb-local \
-          docker compose -f docker-compose.postgres.yml up -d
+          cd docker
+          # Lancer Docker Compose en utilisant ton image locale via override
+          docker compose -f docker-compose.postgres.yml -f docker-compose.override.ci.yml run --rm -e INSTALL_TB=true -e LOAD_DEMO=true thingsboard-ce
+          docker compose -f docker-compose.postgres.yml -f docker-compose.override.ci.yml up -d
 
       - name: Check running container
         run: |
           docker ps
-          cd docker && docker compose -f docker-compose.postgres.yml down
+          cd docker
+          docker compose -f docker-compose.postgres.yml -f docker-compose.override.ci.yml down
