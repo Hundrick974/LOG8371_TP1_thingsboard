@@ -1,12 +1,14 @@
-name: CI ThingsBoard - LOG8371
+name: CI ThingsBoard
 
 on:
   push:
-    branches: [ master, main ]
+    branches: ["**"]
 
 jobs:
-  build:
+  tests-common:
+    name: Tests common/data et common/util
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -17,14 +19,36 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Compilation et Tests
-        run: mvn clean install -pl common/data,common/util -am -Dlicense.skip=true -Dcheckstyle.skip=true -Dformatter.skip=true -Dimpsort.skip=true
+      - name: Run ONLY common tests
+        run: mvn test -pl common/data,common/util -am
 
-      - name: Lancer ThingsBoard
+  docker-run:
+    name: Build & Run ThingsBoard (from THIS repo)
+    needs: tests-common
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build ThingsBoard (no tests)
         run: |
-          docker run -d --name tb -p 8080:8080 thingsboard/tb-postgres
-          sleep 30
-          docker logs tb | tail -n 20
-          docker ps | grep tb
-          docker stop tb
-          docker rm tb
+          mvn clean install -DskipTests
+
+      - name: Build Docker image from this repo
+        run: |
+          docker build -t tb-local -f docker/tb-postgres/Dockerfile .
+
+      - name: Start ThingsBoard with Docker Compose (Postgres)
+        run: cd docker && TB_IMAGE=tb-local docker compose -f docker-compose.postgres.yml up -d
+
+      - name: Check running container
+        run: |
+          docker ps
+          cd docker && docker compose -f docker-compose.postgres.yml down
