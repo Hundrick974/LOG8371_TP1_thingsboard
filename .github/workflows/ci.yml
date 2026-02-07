@@ -20,45 +20,42 @@ jobs:
           cache: 'maven'
 
       - name: Run ONLY common tests
-        run: mvn test -pl common/data,common/util -am -Dlicense.skip=true -Dcheckstyle.skip=true -Dformatter.skip=true -Dimpsort.skip=true
+        run: mvn test -pl common/data,common/util -am \
+          -Dlicense.skip=true \
+          -Dcheckstyle.skip=true \
+          -Dformatter.skip=true \
+          -Dimpsort.skip=true
 
-#  docker-run:
-#    name: Build & Run ThingsBoard (from THIS repo)
-#    needs: tests-common
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Set up JDK 17
-#        uses: actions/setup-java@v4
-#        with:
-#          java-version: '17'
-#          distribution: 'temurin'
-#          cache: 'maven'
-#
-#      - name: Build ThingsBoard (no tests)
-#        run: |
-#          mvn clean install -DskipTests \
-#            -Dlicense.skip=true \
-#            -Dcheckstyle.skip=true \
-#            -Dformatter.skip=true \
-#            -Dimpsort.skip=true
-#
-#      - name: Build Docker image from this repo
-#        run: |
-#          # Build ton image ThingsBoard à partir du code
-#          docker build -t tb-local -f docker/Dockerfile .
-#
-#      - name: Start ThingsBoard with Docker Compose (Postgres)
-#        run: |
-#          cd docker
-#          # Lancer Docker Compose en utilisant ton image locale via override
-#          docker compose -f docker-compose.postgres.yml -f docker-compose.override.ci.yml run --rm -e INSTALL_TB=true -e LOAD_DEMO=true thingsboard-ce
-#          docker compose -f docker-compose.postgres.yml -f docker-compose.override.ci.yml up -d
-#
-#      - name: Check running container
-#        run: |
-#          docker ps
-#          cd docker
-#          docker compose -f docker-compose.postgres.yml -f docker-compose.override.ci.yml down
+      - name: Build ThingsBoard Docker image
+        run: |
+          docker build \
+            -t thingsboard-ce-local:ci \
+            -f docker/thingsboard/Dockerfile .
+
+      - name: Install ThingsBoard (one-time init)
+        run: |
+          docker compose run --rm \
+            -e INSTALL_TB=true \
+            -e LOAD_DEMO=true \
+              thingsboard-ce
+
+      - name: Start ThingsBoard stack
+        run: docker compose up -d
+        
+      - name: Wait for ThingsBoard
+        run: |
+          echo "Waiting for ThingsBoard..."
+          for i in {1..180}; do
+            if curl -sf http://localhost:8080 > /dev/null; then
+              echo "ThingsBoard is up"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "ThingsBoard did not start"
+          docker compose logs
+          exit 1
+
+      - name: Cleanup Docker
+        if: always()
+        run: docker compose down -v
