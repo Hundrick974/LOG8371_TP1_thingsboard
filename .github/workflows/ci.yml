@@ -4,8 +4,7 @@ on:
   push:
 
 jobs:
-  tests-common:
-    name: Tests common/data et common/util
+  ci:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,52 +27,44 @@ jobs:
             -Dformatter.skip=true \
             -Dimpsort.skip=true
 
-      - name: Build image from repo root
-        working-directory: ${{ github.workspace }}
-        run: docker build -t thingsboard-ce-local:ci .
-
-      - name: Start Postgres
-        run: docker compose up -d postgres
-
-      - name: Wait for Postgres to be ready
+      # Build TB packaging that generates msa/tb/target/docker-postgres
+      - name: Build msa/tb (skip tests) to generate docker-postgres Dockerfile
         run: |
-          echo "Waiting for Postgres..."
-          for i in {1..60}; do
-            if docker compose exec -T postgres pg_isready -U postgres -d thingsboard > /dev/null 2>&1; then
-              echo "Postgres is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Postgres did not become ready"
-          docker compose logs --no-color postgres
-          exit 1
+          mvn clean install -T 1C \
+            -DskipTests \
+            -pl msa/tb -am \
+            -Dlicense.skip=true
 
-      - name: Install ThingsBoard (one-time init)
+      - name: Verify generated Dockerfile exists
         run: |
-          docker compose run --rm \
-            -e INSTALL_TB=true \
-            -e LOAD_DEMO=true \
-            thingsboard-ce
+          ls -la msa/tb/target/docker-postgres
+          test -f msa/tb/target/docker-postgres/Dockerfile
 
-      - name: Start ThingsBoard stack
-        run: docker compose up -d
+      - name: Build ThingsBoard image (generated Dockerfile)
+        run: |
+          docker build -t thingsboard/tb:local \
+            -f msa/tb/target/docker-postgres/Dockerfile \
+            msa/tb/target/docker-postgres
+
+      - name: Run ThingsBoard (smoke)
+        run: |
+          docker rm -f thingsboard-local || true
+          docker run --name thingsboard-local -d -p 9090:9090 thingsboard/tb:local
 
       - name: Wait for ThingsBoard
         run: |
           echo "Waiting for ThingsBoard..."
-          for i in {1..180}; do
-            if curl -sf http://localhost:8080 > /dev/null; then
+          for i in {1..60}; do
+            if curl -sf http://localhost:9090 > /dev/null; then
               echo "ThingsBoard is up"
               exit 0
             fi
             sleep 5
           done
           echo "ThingsBoard did not start"
-          docker compose ps
-          docker compose logs --no-color
+          docker logs thingsboard-local || true
           exit 1
 
-      - name: Cleanup Docker
+      - name: Cleanup
         if: always()
-        run: docker compose down -v
+        run: docker rm -f thingsboard-local || true
