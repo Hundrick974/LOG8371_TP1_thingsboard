@@ -19,11 +19,14 @@ jobs:
           distribution: 'temurin'
 
       - name: Run ONLY common tests
-        run: mvn test -pl common/data,common/util -am \
-          -Dlicense.skip=true \
-          -Dcheckstyle.skip=true \
-          -Dformatter.skip=true \
-          -Dimpsort.skip=true
+        run: |
+          mvn test \
+            -pl common/data,common/util \
+            -am \
+            -Dlicense.skip=true \
+            -Dcheckstyle.skip=true \
+            -Dformatter.skip=true \
+            -Dimpsort.skip=true
 
       - name: Build ThingsBoard Docker image
         run: |
