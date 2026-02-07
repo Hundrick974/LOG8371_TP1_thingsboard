@@ -1,6 +1,8 @@
 # syntax=docker/dockerfile:1.6
-# ThingsBoard is built on Java 17 [1](https://thingsboard.io/docs/user-guide/install/building-from-source/)
 FROM eclipse-temurin:17-jre-jammy
+
+# Use bash with pipefail for safer RUN scripts
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Minimal runtime deps; bash is used by install.sh entrypoint.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -18,51 +20,46 @@ RUN mkdir -p bin/install conf data logs \
     && chown -R thingsboard:thingsboard /usr/share/thingsboard /var/log/thingsboard
 
 # Copy ThingsBoard build artifacts produced by Maven build
-# The jar + install script paths are commonly under application/target [1](https://thingsboard.io/docs/user-guide/install/building-from-source/)[3](https://github.com/thingsboard/thingsboard/issues/13400)
+# Expect these paths after building ThingsBoard (application/target/...) [1](https://bing.com/search?q=Dockerfile+heredoc+RUN+%3c%3cEOF+unterminated+heredoc+BuildKit+docker%2fdockerfile+1.6)[2](https://github.com/moby/buildkit/issues/5265)
 COPY application/target/*-boot.jar /usr/share/thingsboard/bin/thingsboard.jar
-COPY application/target/bin/install/install.sh /usr/share/thingsboard/bin/install/install.sh
-COPY application/target/conf/thingsboard.conf /usr/share/thingsboard/conf/thingsboard.conf
+COPY application/target/conf/ /usr/share/thingsboard/conf/
+COPY application/target/bin/install/ /usr/share/thingsboard/bin/install/
 
-# logback.xml might exist in your build; keep it optional by copying the whole folder if present.
-# If your build does NOT produce it, comment the next line.
-COPY application/target/bin/install/logback.xml /usr/share/thingsboard/bin/install/logback.xml
-
-# Make install script executable and set ownership
+# Ensure install script is executable and permissions are correct
 RUN chmod +x /usr/share/thingsboard/bin/install/install.sh \
     && chown -R thingsboard:thingsboard /usr/share/thingsboard /var/log/thingsboard
 
-# Create an entrypoint that supports:
-# - INSTALL_TB=true (runs install.sh once)
-# - LOAD_DEMO=true (passes --loadDemo) [2](https://github.com/thingsboard/thingsboard/issues/4442)[4](https://stackoverflow.com/questions/62457507/unexpected-error-during-thingsboard-installation)
+# Create entrypoint script (robust BuildKit heredoc, no \n\ hacks) [3](https://www.ipv6.rs/tutorial/macOS/Thingsboard/)[4](https://stackoverflow.com/questions/58482174/thingsboard-installation-failed-on-ubuntu)
+RUN <<'EOF'
+cat > /usr/local/bin/tb-entrypoint.sh <<'SCRIPT_EOF'
+#!/usr/bin/env bash
+set -euo pipefail
 
-RUN cat > /usr/local/bin/tb-entrypoint.sh <<'EOF'\n\
+INSTALL_TB_VAL="${INSTALL_TB:-false}"
+LOAD_DEMO_VAL="${LOAD_DEMO:-false}"
 
-#!/usr/bin/env bash\n\
-set -euo pipefail\n\
-\n\
-INSTALL_TB_VAL=\"${INSTALL_TB:-false}\"\n\
-LOAD_DEMO_VAL=\"${LOAD_DEMO:-false}\"\n\
-\n\
-if [[ \"${INSTALL_TB_VAL}\" == \"true\" ]]; then\n\
-  echo \"[tb-entrypoint] INSTALL_TB=true -> running installation\"\n\
-  if [[ \"${LOAD_DEMO_VAL}\" == \"true\" ]]; then\n\
-    echo \"[tb-entrypoint] LOAD_DEMO=true -> using --loadDemo\"\n\
-    /usr/share/thingsboard/bin/install/install.sh --loadDemo\n\
-  else\n\
-    /usr/share/thingsboard/bin/install/install.sh\n\
-  fi\n\
-  echo \"[tb-entrypoint] Installation complete\"\n\
-  exit 0\n\
-fi\n\
-\n\
-echo \"[tb-entrypoint] Starting ThingsBoard\"\n\
-exec java ${JAVA_OPTS:-} -jar /usr/share/thingsboard/bin/thingsboard.jar\n\
-EOF\n\
-&& chmod +x /usr/local/bin/tb-entrypoint.sh
+if [[ "${INSTALL_TB_VAL}" == "true" ]]; then
+  echo "[tb-entrypoint] INSTALL_TB=true -> running installation"
+  if [[ "${LOAD_DEMO_VAL}" == "true" ]]; then
+    echo "[tb-entrypoint] LOAD_DEMO=true -> using --loadDemo"
+    /usr/share/thingsboard/bin/install/install.sh --loadDemo
+  else
+    /usr/share/thingsboard/bin/install/install.sh
+  fi
+  echo "[tb-entrypoint] Installation complete"
+  exit 0
+fi
+
+echo "[tb-entrypoint] Starting ThingsBoard"
+exec java ${JAVA_OPTS:-} -jar /usr/share/thingsboard/bin/thingsboard.jar
+SCRIPT_EOF
+
+chmod +x /usr/local/bin/tb-entrypoint.sh
+chown 799:799 /usr/local/bin/tb-entrypoint.sh
+EOF
 
 USER 799
 
-# Standard ports used in your compose
 EXPOSE 8080 7070 1883 8883 5683-5688/udp
 
 ENTRYPOINT ["/usr/local/bin/tb-entrypoint.sh"]
