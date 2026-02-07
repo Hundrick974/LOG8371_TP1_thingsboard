@@ -12,6 +12,9 @@ services:
   thingsboard-ce:
     restart: always
     image: "thingsboard-ce-local:ci"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile   # adapte le chemin
     ports:
       - "8080:8080"
       - "7070:7070"

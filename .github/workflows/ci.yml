@@ -29,7 +29,7 @@ jobs:
             -Dimpsort.skip=true
 
       - name: Build ThingsBoard Docker image
-        run: docker build -t thingsboard-ce-local:ci .
+        run: docker compose build thingsboard-ce
 
       - name: Start Postgres
         run: docker compose up -d postgres
