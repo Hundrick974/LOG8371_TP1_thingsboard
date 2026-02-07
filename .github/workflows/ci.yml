@@ -17,7 +17,7 @@ jobs:
           distribution: "temurin"
           cache: "maven"
 
-      - name: Run ONLY common tests
+      - name: Run tests
         run: |
           mvn test \
             -pl common/data,common/util \
@@ -27,7 +27,6 @@ jobs:
             -Dformatter.skip=true \
             -Dimpsort.skip=true
 
-      # Build TB packaging that generates msa/tb/target/docker-postgres
       - name: Build msa/tb (skip tests) to generate docker-postgres Dockerfile
         run: |
           mvn clean install -T 1C \
