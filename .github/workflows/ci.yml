@@ -28,8 +28,9 @@ jobs:
             -Dformatter.skip=true \
             -Dimpsort.skip=true
 
-      - name: Build ThingsBoard Docker image
-        run: docker compose build thingsboard-ce
+      - name: Build image from repo root
+        working-directory: ${{ github.workspace }}
+        run: docker build -t thingsboard-ce-local:ci .
 
       - name: Start Postgres
         run: docker compose up -d postgres

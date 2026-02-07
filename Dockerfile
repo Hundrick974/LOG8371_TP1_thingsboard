@@ -34,7 +34,9 @@ RUN chmod +x /usr/share/thingsboard/bin/install/install.sh \
 # Create an entrypoint that supports:
 # - INSTALL_TB=true (runs install.sh once)
 # - LOAD_DEMO=true (passes --loadDemo) [2](https://github.com/thingsboard/thingsboard/issues/4442)[4](https://stackoverflow.com/questions/62457507/unexpected-error-during-thingsboard-installation)
+
 RUN cat > /usr/local/bin/tb-entrypoint.sh <<'EOF'\n\
+
 #!/usr/bin/env bash\n\
 set -euo pipefail\n\
 \n\
