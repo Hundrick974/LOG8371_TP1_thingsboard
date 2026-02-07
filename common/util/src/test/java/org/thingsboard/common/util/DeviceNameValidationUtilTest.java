@@ -41,7 +41,7 @@ public class DeviceNameValidationUtilTest {
         assertFalse(ValidationUtils.isValidDeviceName("12"));
         assertFalse(ValidationUtils.isValidDeviceName(null));
         assertFalse(ValidationUtils.isValidDeviceName("Device!@#"));
-        assertTrue(ValidationUtils.isValidDeviceName("This-is-a-51-caracter-name-that-shouldnt-be-acceptd"));
+        assertFalse(ValidationUtils.isValidDeviceName("This-is-a-51-caracter-name-that-shouldnt-be-acceptd"));
         assertFalse(ValidationUtils.isValidDeviceName("This-name-is-longer-than-50-caracters-and-should-therefore-be-rejected-by-the-system"));
     }
 }
